@@ -7,6 +7,10 @@ export default defineConfig({
     environment: "node",
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, ".") },
+    alias: {
+      "@": path.resolve(__dirname, "."),
+      // allow importing server modules (dodo-sync → supabase/admin) in tests
+      "server-only": path.resolve(__dirname, "test/stubs/server-only.ts"),
+    },
   },
 });

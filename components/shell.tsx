@@ -126,7 +126,7 @@ export default function Shell({
           <div className="panel p-4">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-mint-400">
               <FlaskConical className="h-3 w-3" />
-              {shop.mode === "demo" ? "Demo shop — synthetic feed" : "Live TikTok Shop"}
+              {shop.mode === "demo" ? "Demo — never mixed with real data" : "Live TikTok Shop"}
             </div>
             <p className="mt-1.5 truncate font-semibold">{shop.name}</p>
             <p className="mt-0.5 font-mono text-[11px] text-zinc-500">
