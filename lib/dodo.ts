@@ -64,7 +64,7 @@ export async function createDodoCheckout(args: {
         name: args.name,
       },
       branding: {
-        business_name: "Revenue Shield AI",
+        business_name: "Regent",
         logo: `${args.origin}/shield-icon.svg`,
       },
     }),
