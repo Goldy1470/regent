@@ -1,52 +1,121 @@
 # Regent
 
-**The protection layer for TikTok Shop sellers.** Every competitor sells *more sales* (product scouting, creator discovery, profit dashboards). Regent sells **keeping the money you already make**: it watches the four things that quietly eat 20–30% of seller GMV, and actively fights them.
+**Regent protects TikTok Shop sellers' revenue.** Upload last month's settlement export and
+Regent recomputes every fee against a versioned policy rate card — referral, refund admin,
+return labels, shipping — and shows exactly where TikTok charged more than policy says it
+should, with the evidence to dispute it. Plus Listing Guard (word-boundary claims scanner) and
+an Account Health tracker with human-reviewed appeal drafts.
 
-> Metrics sellers post about constantly (r/TikTokshop, Trustpilot, 2025–26): sudden "TT jail" violations with a 180-day AHR-point tail, return-fraud rates of 12–18%, fee charges that are "impossible to amend", and — since Oct 2025 — affiliate access gated on Seller-Fault Return Rate. No tool fights any of this. We do.
+> One AI agent that fights every fight TikTok picks. In v1: evidence, never promises —
+> no scraping, no credential collection, no success fee.
 
-## The four shields
+<p>
+  <img alt="npm test" src="https://img.shields.io/badge/tests-29%20passing-brightgreen" />
+  <img alt="CI" src="https://img.shields.io/badge/CI-GitHub_Actions-blue" />
+  <img alt="engine" src="https://img.shields.io/badge/Next.js-14-black" />
+</p>
 
-| Module | What it does | Revenue motion |
-| --- | --- | --- |
-| **Violation Shield** | AI scans every draft listing against the TikTok Shop claims corpus *before* it can strike you; auto-drafts appeal packets (AHR points, removals, account-risk reviews) when enforcement still lands. | Reinstated GMV → success fee |
-| **Return Fraud Fighter** | Scores every refund claim (buyer claim history, carrier scans, listing evidence), builds the dispute packet, tracks the win. | Refund reversals → success fee |
-| **Fee & Margin Auditor** | Reconciles settlement lines vs the published rate card: doubled return-admin fees, wrong referral tiers, phantom surcharges, rounding leaks. | Fee credits → success fee |
-| **SFRR Guardian** | Per-product Seller-Fault Return Rate vs the affiliate-eligibility gate, with the concrete fix that pulls SKUs back into the affiliate program. | Keeps ad/revenue channel alive |
+## The v1 wedge
 
-**Pricing = subscription + success fee on recovered funds** (Starter $49 + 10%, Scale $149 + 7%, Pro $399 + 5%). We only get paid extra when the seller gets paid — the anti-thesis of flat analytics seats.
+| | Feature | Entry |
+|---|---|---|
+| A | **Listing Guard** — versioned claims corpus (word-boundary regexes; LLM as advisory layer). Risk score, offending phrase, rewrite. | `/app/scan` |
+| B | **Leak Audit** — CSV/XLSX settlement upload → column mapping → fee recompute → overcharge evidence with policy citations + "how to dispute" note. | `/app/audit` → evidence in `/app/fees` |
+| C | **Account Health** — score, violations, fix-first list; appeal drafts always behind a review gate. | `/app/violations`, `/app/dashboard` |
 
-## Stack
+Non-goals in v1: return-fraud scoring, SFRR guardian, buyer blacklists, creator tools,
+success-fee billing. The remaining demo pages are labeled **DEMO** and never mix with real
+uploads (`shops.mode` + upload-only `audit_imports`).
 
-- **Next.js 14** (App Router, TS, Tailwind)
-- **Supabase** (Postgres + Auth + RLS, schema in `supabase/schema.sql`)
-- **Dodo Payments** (checkout + webhook subscription lifecycle)
-- **OpenAI gpt-4o-mini** for generated packets — with a full offline rule-engine fallback so the app works demo-perfect with zero API keys
+## Pricing (v3, hypothesis under test)
+
+| Plan | Price | What you get |
+|---|---|---|
+| **Free** | $0 | 1 Leak Audit + 5 listing scans / mo, health tracker — no card |
+| **Starter** | $29/mo · $290/yr | unlimited scans, 30 audits/mo, appeal drafts, 1 shop |
+| **Growth** | $59/mo · $590/yr | 3 shops, weekly auto-audit + alerts, priority evidence packs |
+
+Annual = 2 months free, separate Dodo SKUs (`DODO_PRODUCT_*_ANNUAL`). **0% success fee in v1.**
+Billing runs on [Dodo Payments](https://dodopayments.com) (checkout, hosted customer portal,
+dunning emails surfaced as `past_due`).
+
+## Policy knowledge is versioned data
+
+`lib/policy/rate-card.ts` holds dated snapshots (`US-2026-08`: referral 6%, refund admin =
+20% of the refunded item's referral fee capped at $5/SKU; `US-2026-07`: referral 8%).
+`policyForDate(settle_date)` picks the right card per row, so July's export is audited under
+July's card. Every anomaly carries a citation naming the version + rule. Update process and
+changelog: **[docs/policy-versions.md](docs/policy-versions.md)**.
 
 ## Quickstart
 
 ```bash
 npm install
-cp .env.example .env.local   # fill Supabase URL + anon key (OpenAI / Dodo optional)
+
+# 1) Supabase: create a project, then run supabase/schema.sql in the SQL editor
+#    (one file, idempotent: tables + RLS + recovery RPCs + signup trigger)
+
+# 2) envs
+cp .env.example .env.local   # fill it in (checklist inside)
+
+# 3) run
+npm run dev                  # http://localhost:3000
 ```
 
-1. Create a Supabase project → SQL Editor → paste `supabase/schema.sql` → run.
-2. Auth -> URL config: add `http://localhost:3000/auth/callback` as redirect URL.
-3. `npm run dev` → sign up → onboarding seeds a realistic demo shop → explore all four shields.
+The app is mock/environment safe: with no Supabase envs, pages render demo data and labeled
+placeholders; checkout and webhooks require real envs and report missing config inline.
 
-**With zero keys configured** the app runs entirely on the built-in engines (deterministic policy scan, template packets, mock settlement reconciliation). Add `OPENAI_API_KEY` to switch packet drafting to GPT-4o-mini. Add Dodo keys (`DODO_MODE=test`, `DODO_API_KEY`, `DODO_PRODUCT_*`, `DODO_WEBHOOK_KEY`) to enable real checkout flow.
+## Tests & CI
 
-## Dodo webhook setup
+```bash
+npm test          # vitest: rules corpus, rate card math, parsers, mapping, webhook patch mapping, plan caps
+npm run typecheck # tsc --noEmit
+npm run lint
+```
 
-Point a webhook at `POST /api/dodo/webhook` with: `subscription.active`, `subscription.updated`, `subscription.cancelled`, `subscription.expired`, `subscription.payment_failed`, `payment.succeeded`. Signature (Standard Webhooks) verified with `DODO_WEBHOOK_KEY`. Missing key → unsigned mode for local testing.
+CI (`.github/workflows/ci.yml`) runs typecheck → lint → test → build on every push/PR.
+Test fixture: `test/fixtures/settlement-us.csv` locks the engine dollars ($21.58 leaked:
+Aug-6% referral overcharge of $2.00, refund-admin over-cap $8.08, duplicate shipping $4.00,
+buyer-remorse label $7.50).
 
-## Phase 2 (post-MVP roadmap)
+RLS policy tests are SQL-level and need a live database — see `test/rls/`.
+**They have not been executed against a real project yet** (no Supabase env configured in
+this working copy).
 
-- **Live API mode** via TikTok Shop Open API (`/authorization`, `/product/listing`, `/order`, `/finance/settlement`) behind the same table contracts — demo mode already exercises the whole surface.
-- Buyer-fingerprint blacklist shared across shops (network effect moat).
-- Appeals-as-a-service agency desk on Pro tier (white-label packet exports + analyst follow-up).
-- Escrow-style caption: automatic success-fee invoicing from the ledger via Dodo invoicing API.
+## Security model (read before touching billing)
 
-## Honest-build notes
+- `profiles` = user-editable columns only. Plan/subscription/`recovered_lifetime` live in the
+  `entitlements` table; client writes are revoked (grants + no RLS write policies); reads are
+  RLS-scoped to own row.
+- Service-role client (`lib/supabase/admin.ts`) is `"server-only"`; the key has no
+  `NEXT_PUBLIC_` prefix.
+- Webhook (`/api/dodo/webhook`): signature always verified when `DODO_WEBHOOK_KEY` exists and
+  **production fails closed without it**; idempotent via `webhook_events` (standardwebhooks
+  `webhook-id`); unresolved events free their id so Dodo's retry can resolve later.
+- Recovery moves money only through SECURITY DEFINER RPCs (`recover_fee`, `recover_return`)
+  that read amounts from stored rows — request bodies can't assert amounts.
+- One entitlements helper (`lib/entitlements.ts`) gates every metered route; usage is counted
+  head-row per YYYY-MM from the tables themselves.
+- All mutating API inputs zod-validated; AI routes rate-limited; funnel events carry no PII.
 
-- TikTok Shop analytics/GMV numbers elsewhere in the market are scraped estimates; first-party-mode data (your own shop) is exact — that's why this product connects directly instead of scraping.
-- AI drafts; humans approve. Refunds, claims and policy decisions always ship with a review step (per platform policy best practice).
+## Deployment
+
+Full steps: **[docs/launch-checklist.md](docs/launch-checklist.md)** (supabase schema, env
+checklist, Dodo products/webhook/portal validation, funnel walk, live-mode switches).
+
+Short version: Supabase (schema + keys) → Vercel (import repo, set envs) → Dodo (products +
+webhook) → walk the funnel with a test account → flip to live mode.
+
+## Docs
+
+- [docs/plan.md](docs/plan.md) — wedge, assumptions, risks (incl. TikTok ToS/API), pivot rule
+- [docs/research.md](docs/research.md) — 10 design-partner script + 30-day scoreboard
+- [docs/policy-versions.md](docs/policy-versions.md) — update the rate card correctly
+- [docs/launch-checklist.md](docs/launch-checklist.md) — deploy + env checklist
+- [test/rls/](test/rls) — RLS test SQL (manual run)
+
+## Status / what is *not* verified yet
+
+- RLS policy SQL written but not executed against a live Supabase project.
+- Webhook signature + `product_events` verified only by unit logic, not against Dodo's live API.
+- TikTok OAuth ingestion is **phase 2** (design partners); CSV/XLSX ingestion is the shipped path.
