@@ -1,82 +1,68 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireApiSession } from "@/lib/session";
+import { rateLimit } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const session = await requireApiSession();
   if (!session) {
     return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   }
-  const shop = session.shop;
-  if (!shop) {
-    return NextResponse.json({ ok: false, error: "No shop connected" }, { status: 400 });
+  if (!rateLimit(`recover:${session.userId}`, 20, 60_000).ok) {
+    return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
   }
 
   const body = (await req.json()) as {
     type?: "alert" | "case" | "fee";
     id?: string;
-    amount?: number;
-    description?: string;
+    note?: string;
   };
 
-  if (!body.type || !body.id || !body.amount || body.amount <= 0) {
+  if (!body.type || !body.id) {
     return NextResponse.json(
-      { ok: false, error: "type, id and positive amount required" },
+      { ok: false, error: "type and id required" },
       { status: 400 }
     );
   }
 
-  const supa = supabaseServer();
+  // SECURITY: amounts are computed server-side from stored rows via SECURITY
+  // DEFINER SQL functions. The client can never assert how much money moved.
+  const functionName =
+    body.type === "fee" ? "recover_fee" : body.type === "case" ? "recover_return" : null;
 
-  const sourceMap = {
-    alert: "appeal_reinstatement",
-    case: "fraud_dispute",
-    fee: "fee_audit",
-  } as const;
-
-  const description =
-    body.description ??
-    (body.type === "alert"
-      ? "Appeal reinstated at-risk GMV back into monthly settlement"
-      : `${sourceMap[body.type] === "fee_audit" ? "Fee credit" : "Dispute win"}: ${body.id.slice(0, 8)}`);
-
-  const { error: eventError } = await supa.from("recovery_events").insert({
-    shop_id: shop.id,
-    owner: session.userId,
-    source: sourceMap[body.type],
-    amount: body.amount,
-    status: "recovered",
-    description,
-  });
-  if (eventError) {
-    return NextResponse.json({ ok: false, error: "Could not log recovery" }, { status: 500 });
+  if (body.type === "fee") {
+    const { data, error } = await supabaseServer()
+      .rpc("recover_fee", { p_fee_id: body.id, p_note: body.note ?? null });
+    if (error) {
+      return NextResponse.json({ ok: false, error: "Recovery not permitted on this row" }, { status: 403 });
+    }
+    return NextResponse.json({ ok: true, data: { amount: data } });
   }
 
-  if (body.type === "alert") {
-    await supa
+  if (body.type === "case") {
+    const { data, error } = await supabaseServer()
+      .rpc("recover_return", { p_case_id: body.id, p_note: body.note ?? null });
+    if (error) {
+      return NextResponse.json({ ok: false, error: "Recovery not permitted on this row" }, { status: 403 });
+    }
+    return NextResponse.json({ ok: true, data: { amount: data } });
+  }
+
+  if (functionName === null) {
+    // alerts: reinstatement events are logged by support tooling, not the user
+    const { error } = await supabaseServer()
       .from("alerts")
       .update({ status: "resolved" })
       .eq("id", body.id)
       .eq("owner", session.userId);
-  } else if (body.type === "case") {
-    await supa
-      .from("return_cases")
-      .update({ status: "recovered", recovered_amount: body.amount })
-      .eq("id", body.id)
-      .eq("owner", session.userId);
-  } else {
-    await supa
-      .from("fee_anomalies")
-      .update({ status: "recovered", recovered_amount: body.amount })
-      .eq("id", body.id)
-      .eq("owner", session.userId);
+    if (error) {
+      return NextResponse.json({ ok: false, error: "Could not update alert" }, { status: 500 });
+    }
+    // lifetime stays an entitlements concern; no client-provided money values.
+    return NextResponse.json({ ok: true, data: { amount: 0 } });
   }
 
-  const lifetime = Number(session.profile.recovered_lifetime ?? 0) + body.amount;
-  await supa
-    .from("profiles")
-    .update({ recovered_lifetime: lifetime })
-    .eq("id", session.userId);
-
-  return NextResponse.json({ ok: true, data: { amount: body.amount, lifetime } });
+  return NextResponse.json({ ok: false }, { status: 400 });
 }

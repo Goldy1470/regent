@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/session";
 import { Badge, statusTone, PageHeader, StatCard } from "@/components/ui";
 import PlanButtons from "@/components/plan-buttons";
-import { PLANS } from "@/lib/plans";
+import { PLANS, ANNUAL_DISCOUNT_LABEL } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +9,16 @@ export default async function BillingPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const plan = PLANS[session.profile.plan] ?? PLANS.free;
-  const active = session.profile.subscription_status === "active";
+  const ent = session.entitlement;
+  const plan = PLANS[ent.plan] ?? PLANS.free;
+  const active = ent.subscription_status === "active";
 
   return (
     <div className="space-y-8">
       <PageHeader
         crumb="billing"
         title="Billing — powered by Dodo Payments"
-        sub="Subscriptions bill monthly through Dodo. The recovered-funds fee is invoiced separately from your ledger — you can audit every dollar it's computed from in the Recovery Wallet."
+        sub="Flat subscription (monthly or annual). No success fee in v1: every dollar recovered is yours. Manage cards, invoices and cancellation in the Dodo customer portal."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -26,50 +27,54 @@ export default async function BillingPage() {
           value={plan.name}
           sub={
             active
-              ? "Subscription active"
-              : session.profile.subscription_status === "past_due"
-                ? "Payment failed — update your Dodo card"
-                : session.profile.subscription_status === "cancelled"
+              ? `Subscription active (${ent.period})`
+              : ent.subscription_status === "past_due"
+                ? "Payment failed — update your card in the portal"
+                : ent.subscription_status === "cancelled"
                   ? "Cancelled — resubscribe below"
                   : "Free tier"
           }
-          tone={active ? "ok" : session.profile.subscription_status === "past_due" ? "critical" : "low"}
+          tone={active ? "ok" : ent.subscription_status === "past_due" ? "critical" : "low"}
         />
         <StatCard
           label="Plan limits"
-          value={`${plan.shops} shop${plan.shops === 1 ? "" : "s"} · $${plan.recoveryCap.toLocaleString()}`}
-          sub="Recovery processing ceiling per month"
+          value={`${plan.auditsMonth === 9999 ? "Unlimited" : plan.auditsMonth} audits · ${plan.scansMonth} scans`}
+          sub={`${plan.shops} shop${plan.shops === 1 ? "" : "s"}`}
           tone="volt"
         />
         <StatCard
           label="Success fee"
-          value={`${(plan.performanceFee * 100).toFixed(0)}%`}
-          sub="On funds recovered through disputes, fee credits and reinstatements"
-          tone="high"
+          value="0%"
+          sub="You keep every recovered dollar in v1"
+          tone="ok"
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge tone={statusTone(session.profile.subscription_status)}>
-          subscription: {session.profile.subscription_status}
+        <Badge tone={statusTone(ent.subscription_status)}>
+          subscription: {ent.subscription_status}
         </Badge>
-        {session.profile.dodo_subscription_id && (
+        {ent.dodo_subscription_id && (
           <span className="font-mono text-[11px] text-zinc-600">
-            sub {session.profile.dodo_subscription_id.slice(0, 14)}…
+            sub {ent.dodo_subscription_id.slice(0, 14)}…
           </span>
         )}
+        <span className="font-mono text-[11px] text-zinc-600">
+          lifetime recovered: ${ent.recovered_lifetime.toFixed(2)}
+        </span>
       </div>
 
-      <PlanButtons currentPlan={session.profile.plan} status={session.profile.subscription_status} />
+      <PlanButtons currentPlan={ent.plan} status={ent.subscription_status} />
 
       <div className="panel p-6 text-sm text-zinc-400">
         <h3 className="font-bold text-zinc-200">Dodo setup checklist (one time)</h3>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-xs leading-relaxed">
           <li>Create a Dodo Payments account, use <b>Test Mode</b> keys first.</li>
-          <li>Create three monthly products: Starter $49, Scale $149, Pro $399.</li>
-          <li>Put their product IDs into <code>.env.local</code> as DODO_PRODUCT_STARTER / SCALE / PRO, plus your DODO_API_KEY.</li>
-          <li>Add a webhook endpoint to <code>/api/dodo/webhook</code> for subscription.active / subscription.updated / subscription.cancelled / subscription.expired / subscription.payment_failed / payment.succeeded, and set DODO_WEBHOOK_KEY.</li>
-          <li>Go live: flip DODO_MODE=live with live keys. Recovered-funds invoicing stays manual from the ledger until you connect invoicing.</li>
+          <li>Create {ANNUAL_DISCOUNT_LABEL.toUpperCase()} products: Starter $29/mo + $290/yr, Growth $59/mo + $590/yr.</li>
+          <li>Put the product IDs into <code>.env.local</code> as DODO_PRODUCT_STARTER / DODO_PRODUCT_GROWTH / DODO_PRODUCT_STARTER_ANNUAL / DODO_PRODUCT_GROWTH_ANNUAL, plus your DODO_API_KEY.</li>
+          <li>Add a webhook endpoint to <code>/api/dodo/webhook</code> for subscription.active / subscription.updated / subscription.cancelled / subscription.expired / subscription.payment_failed / payment.succeeded, and set DODO_WEBHOOK_KEY (required in production — the handler fails closed).</li>
+          <li>Dunning: enable retry emails in Dodo ’s subscription settings; the webhook flips the account to past_due on payment.failed and Growth layouts keep working until period end.</li>
+          <li>Portal: the “Manage subscription” button opens Dodo’s hosted customer session.</li>
         </ol>
       </div>
     </div>

@@ -37,6 +37,7 @@
     "eslint-config-next": "14.2.35",
     "papaparse": "^5.7.0",
     "postcss": "^8",
+    "server-only": "^0.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "^2.1.9"

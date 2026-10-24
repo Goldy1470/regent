@@ -1,12 +1,15 @@
-import { NextResponse, type NextRequest } from "next/server";
+﻿import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireApiSession } from "@/lib/session";
 import { SCAN_SYSTEM, generateStructured } from "@/lib/ai";
 import { offlineScan } from "@/lib/rules";
+import { denyReason, DENIAL_MESSAGES } from "@/lib/entitlements";
+import { rateLimit } from "@/lib/rate-limit";
 import type { Finding } from "@/lib/types";
 
 export const maxDuration = 60;
+export const runtime = "nodejs";
 
 const Severity = z.enum(["critical", "high", "medium", "low"]);
 
@@ -46,33 +49,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
   }
 
-  const body = (await req.json()) as {
-    title?: string;
-    description?: string;
-    keywords?: string;
-    category?: string;
-  };
+  const raw = await req.json().catch(() => ({}));
+  const parsed = z
+    .object({
+      title: z.string().trim().min(4).max(220),
+      description: z.string().max(8000).optional(),
+      keywords: z.string().max(600).optional(),
+      category: z.string().max(80).optional(),
+    })
+    .safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+  const body = parsed.data;
 
-  const title = (body.title ?? "").trim();
-  if (title.length < 4) {
-    return NextResponse.json({ ok: false, error: "Title is required" }, { status: 400 });
+  if (!rateLimit(`scan:${session.userId}`, 12, 60_000).ok) {
+    return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
   }
 
-  if (session.profile.plan === "free") {
-    const supa = supabaseServer();
-    const start = new Date();
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-    const { count } = await supa
-      .from("listing_scans")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", start.toISOString());
-    if ((count ?? 0) >= 10) {
-      return NextResponse.json(
-        { ok: false, error: "Free plan limit: 10 scans/month. Upgrade in Billing." },
-        { status: 402 }
-      );
-    }
+  const denial = await denyReason(session.userId, "scan");
+  if (denial) {
+    return NextResponse.json({ ok: false, error: DENIAL_MESSAGES[denial] }, { status: 402 });
   }
 
   const shop = session.shop;
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
   }
 
   const fb = offlineScan({
-    title,
+    title: body.title,
     description: body.description ?? "",
     keywords: body.keywords ?? "",
     category: body.category,
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     temperature: 0.2,
     maxTokens: 1100,
     user: JSON.stringify({
-      title,
+      title: body.title,
       description: body.description ?? "",
       keywords: body.keywords ?? "",
       category: body.category ?? "General",
@@ -107,18 +107,18 @@ export async function POST(req: NextRequest) {
 
   const result = source === "openai" ? merge(data, fb) : fb;
 
-  const supa = supabaseServer();
-  const { data: inserted, error } = await supa
+  const { data: inserted, error } = await supabaseServer()
     .from("listing_scans")
     .insert({
       shop_id: shop.id,
       owner: session.userId,
-      title,
+      title: body.title,
       category: body.category ?? "General",
       input: {
         description: body.description ?? "",
         keywords: body.keywords ?? "",
       },
+      ruleset_version: fb.ruleset_version,
       risk_score: result.risk_score,
       verdict: result.verdict,
       findings: result.findings,

@@ -33,6 +33,7 @@ export default async function AppLayout({
   return (
     <Shell
       profile={session.profile}
+      entitlement={session.entitlement}
       shop={session.shop}
       criticalAlerts={criticals ?? []}
     >

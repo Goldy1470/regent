@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { planLabel } from "@/lib/plans";
-import type { Profile, Shop } from "@/lib/types";
+import type { Profile, Shop, Entitlement } from "@/lib/types";
 import RegentMark from "./regent-mark";
 import {
   ShieldCheck,
@@ -15,6 +15,7 @@ import {
   CreditCard,
   Radar,
   Wallet,
+  UploadCloud,
   LogOut,
   Menu,
   X,
@@ -45,6 +46,7 @@ const NAV_GROUPS: {
     group: "Money",
     items: [
       { href: "/app/returns", label: "Return Fraud Fighter", icon: ReceiptText },
+      { href: "/app/audit", label: "Leak Audit", icon: UploadCloud },
       { href: "/app/fees", label: "Fee Auditor", icon: CreditCard },
       { href: "/app/recovery", label: "Recovery Wallet", icon: Wallet },
     ],
@@ -53,11 +55,13 @@ const NAV_GROUPS: {
 
 export default function Shell({
   profile,
+  entitlement,
   shop,
   criticalAlerts,
   children,
 }: {
   profile: Profile;
+  entitlement: Entitlement;
   shop: Shop;
   criticalAlerts: { id: string; title: string; severity: string }[];
   children: React.ReactNode;
@@ -88,11 +92,11 @@ export default function Shell({
   }
 
   const initial = (profile.full_name?.trim()?.[0] ?? "S").toUpperCase();
-  const paid = profile.plan !== "free";
+  const paid = entitlement.plan !== "free";
   const recoveredDisplay =
-    Number(profile.recovered_lifetime) >= 1000
-      ? `$${(Number(profile.recovered_lifetime) / 1000).toFixed(1)}k`
-      : `$${Number(profile.recovered_lifetime).toFixed(0)}`;
+    Number(entitlement.recovered_lifetime) >= 1000
+      ? `$${(Number(entitlement.recovered_lifetime) / 1000).toFixed(1)}k`
+      : `$${Number(entitlement.recovered_lifetime).toFixed(0)}`;
 
   return (
     <div className="min-h-screen bg-ink-950 lg:grid lg:grid-cols-[264px_1fr]">
@@ -178,15 +182,15 @@ export default function Shell({
           <Link href="/app/billing" onClick={() => setOpen(false)} className="panel block p-3.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold">{planLabel(profile.plan)} plan</p>
+                <p className="text-sm font-semibold">{planLabel(entitlement.plan)} plan</p>
                 <p
                   className={`text-[11px] ${
-                    profile.subscription_status === "active" ? "text-mint-400" : "text-zinc-500"
+                    entitlement.subscription_status === "active" ? "text-mint-400" : "text-zinc-500"
                   }`}
                 >
-                  {profile.subscription_status === "active"
+                  {entitlement.subscription_status === "active"
                     ? "Active subscription"
-                    : profile.subscription_status === "past_due"
+                    : entitlement.subscription_status === "past_due"
                       ? "Payment failed"
                       : "Free tier"}
                 </p>

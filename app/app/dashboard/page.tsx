@@ -295,7 +295,7 @@ export default async function DashboardPage() {
       </div>
 
       <p className="text-xs text-zinc-600">
-        Plan: {planLabel(session.profile.plan)} · AI engine: {process.env.OPENAI_API_KEY ? "OpenAI gpt-4o-mini" : "built-in offline engine (add OPENAI_API_KEY for LLM-drafted packets)"} · Payment rail: {process.env.DODO_API_KEY ? "Dodo Payments" : "Dodo setup pending (see Billing)"}
+        Plan: {planLabel(session.entitlement.plan)} · AI engine: {process.env.OPENAI_API_KEY ? "OpenAI gpt-4o-mini" : "built-in offline engine (add OPENAI_API_KEY for LLM-drafted packets)"} · Payment rail: {process.env.DODO_API_KEY ? "Dodo Payments" : "Dodo setup pending (see Billing)"}
       </p>
     </div>
   );

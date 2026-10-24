@@ -2,13 +2,18 @@ export type Profile = {
   id: string;
   email: string | null;
   full_name: string;
-  plan: PlanId;
-  dodo_customer_id: string | null;
-  dodo_subscription_id: string | null;
-  subscription_status: "free" | "active" | "past_due" | "cancelled";
-  recovered_lifetime: number;
   onboarding_done: boolean;
   created_at: string;
+};
+
+/** Server-controlled entitlement state (mirrors entitlements table; read-only on the client). */
+export type Entitlement = {
+  plan: PlanId;
+  subscription_status: "free" | "active" | "past_due" | "cancelled";
+  period: "monthly" | "annual";
+  dodo_customer_id: string | null;
+  dodo_subscription_id: string | null;
+  recovered_lifetime: number;
 };
 
 export type Shop = {
@@ -120,7 +125,7 @@ export type RecoveryEvent = {
   created_at: string;
 };
 
-export type PlanId = "free" | "starter" | "scale" | "pro";
+export type PlanId = "free" | "starter" | "growth";
 
 export type ActionResponse = {
   ok: boolean;

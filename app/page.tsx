@@ -81,8 +81,8 @@ const RESEARCH = [
 const SHIELDED = [
   "Watches YOUR shop and fights for it",
   "Drafts + files every appeal, dispute and correction",
-  "Success fee on money actually recovered",
-  "First-party API data only - no scraping",
+  "Flat subscription: 0% success fee in v1",
+  "Versioned rate card - no stale policy folklore",
 ];
 
 function planCard(id: PlanId) {
@@ -112,7 +112,7 @@ function planCard(id: PlanId) {
         <span className={`text-sm ${p.highlight ? "text-neutral-400" : "text-neutral-400"}`}>/mo</span>
       </div>
       <p className={`mt-1.5 text-[13px] font-medium ${p.highlight ? "text-emerald-400" : "text-emerald-600"}`}>
-        + {(p.performanceFee * 100).toFixed(0)}% of funds recovered
+        {p.price === 0 ? "No card required" : `or $${p.annualPrice}/yr — 2 months free`}
       </p>
       <ul className={`mt-6 flex-1 space-y-2.5 text-[13px] leading-relaxed ${p.highlight ? "text-neutral-300" : "text-neutral-500"}`}>
         {p.features.map((f) => (
@@ -143,19 +143,19 @@ function planCard(id: PlanId) {
 const FAQ = [
   {
     q: "How is this different from Kalodata, FastMoss or Pipiads?",
-    a: "They are research tools - they show what others sell. Regent is a protection tool: it plugs into your own shop, watches what can take your money away (strikes, fraud, fee errors, eligibility gates) and actively fights for it. Research tells you where to aim; the Shield makes sure the revenue actually lands.",
+    a: "They are research tools - they show what others sell. Regent is a protection tool: it plugs into your own shop, watches what can take your money away (strikes, fee errors, return-cost leaks) and shows the receipts. Research tells you where to aim; Regent makes sure the revenue actually lands.",
   },
   {
-    q: "Why a performance fee on recovered funds?",
-    a: "Because we only get paid extra when you do. The subscription keeps the radar running; the recovery fee means every dispute, fee correction and appeal we win is money we split with you. Flat analytics seats price the same whether or not they save you a dollar.",
+    q: "Do you take a cut of recovered money?",
+    a: "Not in v1. The subscription is the whole price - Starter $29/month, Growth $59/month, annual for two months free. Every dollar the audit finds is 100% yours; we would rather earn the trust before ever sharing upside.",
   },
   {
     q: "Does it connect to my real TikTok Shop?",
-    a: "Yes - via TikTok Shop Open API (listing, order, return and settlement endpoints) with read-plus-representative scopes. This build ships in demo mode with a realistic synthetic shop; the live connector is phase 2 after developer approval.",
+    a: "In v1 you upload Seller Center settlement/order exports (CSV/XLSX) - works with zero API approval, your numbers from day one. The TikTok Shop Partner Center custom-app connector is phase 2 for design partners.",
   },
   {
     q: "What does the AI actually write versus me?",
-    a: "The AI drafts - evidence packets, corrected listing copy, appeal narratives - and you approve in one click. Nothing files itself. You keep final approval on anything touching refunds, claims or policy.",
+    a: "The AI drafts - corrected listing copy, appeal narratives, dispute evidence notes - and you approve with review-before-submit gates. Nothing files itself. Every claim cites the rule or rate-card row that triggered it, and if the engine is unsure it says so.",
   },
 ];
 
@@ -493,7 +493,7 @@ export default function LandingPage() {
               {[
                 { n: "01", t: "Connect", d: "Sign up, name your shop. The Shield pre-loads a full synthetic prod of your category so every module is live and testable in minutes." },
                 { n: "02", t: "The radar sweeps", d: "Open violations, refund claims, settlement lines and SKU gates get scored, ranked and packeted. Your true attack surface, visible in minutes." },
-                { n: "03", t: "You approve, it files", d: "One click per packet into Seller Center. Every dollar recovered lands in an auditable ledger - we invoice a small success fee on it." },
+                { n: "03", t: "You approve, it files", d: "One click per packet into Seller Center. Every dollar recovered lands in an auditable ledger you can export line by line." },
               ].map((s) => (
                 <div key={s.n} data-reveal className="relative rounded-2xl border border-neutral-200 bg-white p-8 transition hover:border-neutral-300 hover:shadow-[0_16px_40px_-20px_rgba(10,10,10,0.15)]">
                   <span className="font-mono text-[64px] font-semibold leading-none tracking-tighter text-neutral-100">
@@ -520,8 +520,8 @@ export default function LandingPage() {
                 <span className="italic text-emerald-600">you don&apos;t fight for.</span>
               </h2>
               <p data-reveal className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-neutral-500">
-                Appeals, disputes and audits are just bookkeeping you don&apos;t have time for.
-                Regent does the bookkeeping and shares the upside.
+                Appeals, disputes and audits are bookkeeping you don&apos;t have time for.
+                Regent does it, and prices itself against what it keeps leaking.
               </p>
             </div>
 
@@ -555,25 +555,25 @@ export default function LandingPage() {
                 <ul className="mt-5 space-y-3.5 text-[14px] text-neutral-800">
                   <li className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span><span className="font-semibold">$0 free tier</span> - the radar runs before you pay a cent</span>
+                    <span><span className="font-semibold">$0 free tier</span> - upload your real settlement file and see the leak before paying a cent</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span><span className="font-semibold">Ward is $19/mo</span> - breakeven at roughly $160 recovered, once</span>
+                    <span><span className="font-semibold">Starter is $29/mo</span> - about a day of one mid-listing that went dark</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span><span className="font-semibold">Success fee only on money back</span> - no recovery, no fee</span>
+                    <span><span className="font-semibold">0% success fee in v1</span> - flat price; every recovered dollar is yours</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span><span className="font-semibold">An ops hire runs $3-5k/mo</span> - this runs 24/7 from $19</span>
+                    <span><span className="font-semibold">An ops hire runs $3-5k/mo</span> - this sweeps every settlement cycle from $29</span>
                   </li>
                 </ul>
               </div>
             </Reveal>
             <p data-reveal className="mx-auto mt-8 max-w-2xl text-center text-neutral-400">
-              The subscription buys the radar. The success fee buys nothing but wins.
+              The subscription buys the full radar. Recovered money is 100% yours.
             </p>
           </div>
         </section>
@@ -582,17 +582,16 @@ export default function LandingPage() {
         <section id="pricing" className="px-6 py-24">
           <div className="mx-auto max-w-6xl">
             <h2 data-reveal className="font-display font-display text-center text-4xl font-medium tracking-[-0.02em] md:text-5xl">
-              Subscription + success fee.
+              Flat monthly. Zero percentage.
               <br />
-              <span className="italic text-emerald-600">We win when you win.</span>
+              <span className="italic text-emerald-600">Every recovered dollar stays yours.</span>
             </h2>
-            <Reveal className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4" stagger={0.1}>
-              {(["free", "starter", "scale", "pro"] as PlanId[]).map(planCard)}
+            <Reveal className="mt-14 grid gap-5 md:grid-cols-3" stagger={0.1}>
+              {(["free", "starter", "growth"] as PlanId[]).map(planCard)}
             </Reveal>
             <p data-reveal className="mx-auto mt-8 max-w-xl text-center text-xs leading-relaxed text-neutral-400">
-              No seat tax: the subscription only buys the radar. The success fee applies to nothing
-              but funds actually recovered through filed disputes, fee corrections and reinstated
-              listings - invoiced monthly from a ledger you can audit line by line. Cancel anytime.
+              Starter $29/mo, Growth $59/mo, or annual and two months are on us. Free tier runs one
+              full audit on your real export - no card. Cancel anytime.
             </p>
           </div>
         </section>

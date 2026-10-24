@@ -2,8 +2,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getSession, money, shortMoney } from "@/lib/session";
 import { Badge, PageHeader, StatCard, statusTone } from "@/components/ui";
 import ExportCsvButton from "@/components/export-csv";
-import { planOf } from "@/lib/plans";
-import { Wallet, HandCoins, Receipt, FileSpreadsheet } from "lucide-react";
+import { Wallet, Receipt, FileSpreadsheet, BadgeDollarSign } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +19,7 @@ export default async function RecoveryPage() {
   if (!session) return null;
   const supa = supabaseServer();
   const owner = session.userId;
+  const ent = session.entitlement;
 
   const { data: events } = await supa
     .from("recovery_events")
@@ -30,29 +30,23 @@ export default async function RecoveryPage() {
   const rows = events ?? [];
   const recovered = rows.filter((e) => e.status === "recovered").reduce((s, e) => s + e.amount, 0);
   const pending = rows.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0);
-  const plan = planOf(session.profile.plan);
-  const fee = recovered * plan.performanceFee;
-  const nextFeeInvoice = rows
-    .filter((e) => e.status === "recovered")
-    .slice(0, 10)
-    .reduce((s, e) => s + e.amount, 0) * plan.performanceFee;
 
   return (
     <div className="space-y-8">
       <PageHeader
         crumb="recovery wallet"
         title="Recovery Wallet"
-        sub="The auditable trail behind your success fee: every dollar this AI found, fought for, or forced back. Invoicing per recovered funds, generated from this ledger."
+        sub="The auditable trail of every dollar this engine found, fought for, or forced back. In v1 there is no success fee — these are your dollars end to end."
         live
         pulseLabel="ledger synced"
-        right={<ExportCsvButton filename="revenue-shield-recovery-ledger.csv" />}
+        right={<ExportCsvButton filename="regent-recovery-ledger.csv" />}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Recovered — all time" value={money(recovered)} sub="Hard cash: disputes, credits, fee refunds" tone="ok" icon={<Wallet className="h-4 w-4" />} />
         <StatCard label="In appeals / awaiting platform" value={shortMoney(pending)} sub="GMV or credits pending platform action" tone="volt" icon={<Receipt className="h-4 w-4" />} />
-        <StatCard label={`Success fee at ${(plan.performanceFee * 100).toFixed(0)}%`} value={money(fee)} sub="Only charged on funds recovered" tone="high" icon={<HandCoins className="h-4 w-4" />} />
-        <StatCard label="Next monthly fee invoice (est.)" value={money(nextFeeInvoice)} sub="Trailing 10-recovery window sample" tone="low" icon={<FileSpreadsheet className="h-4 w-4" />} />
+        <StatCard label="Success fee" value="0%" sub="No fee in v1 — flat subscription only" tone="ok" icon={<BadgeDollarSign className="h-4 w-4" />} />
+        <StatCard label="Lifetime (entitlements)" value={money(ent.recovered_lifetime)} sub="Server-computed from this ledger" tone="low" icon={<FileSpreadsheet className="h-4 w-4" />} />
       </div>
 
       <div className="panel overflow-hidden">
@@ -96,12 +90,12 @@ export default async function RecoveryPage() {
         </div>
       </div>
 
-      {session.profile.plan === "free" && (
+      {ent.subscription_status !== "active" && (
         <div className="panel flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
-            <h3 className="font-bold">You&apos;re leaving money on the table at Free tier</h3>
+            <h3 className="font-bold">Free tier reads the leaks. Paid plans help you close them.</h3>
             <p className="mt-1 text-sm text-zinc-400">
-              Free shows you the leaks but holds dispute filing, full fee corrections and recovery processing above $500/mo. You found {money(recovered + pending)} of leakage already.
+              Starter unlocks unlimited scans, monthly full re-audits and appeal drafting. You already found {money(recovered + pending)} of leakage.
             </p>
           </div>
           <Link href="/app/billing" className="btn-primary">

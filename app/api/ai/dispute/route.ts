@@ -1,6 +1,10 @@
-import { NextResponse, type NextRequest } from "next/server";
+﻿import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireApiSession } from "@/lib/session";
+import { denyReason, DENIAL_MESSAGES } from "@/lib/entitlements";
+import { rateLimit } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 import { DISPUTE_SYSTEM, generate } from "@/lib/ai";
 import { disputeTemplate } from "@/lib/templates";
 
@@ -19,6 +23,14 @@ export async function POST(req: NextRequest) {
   const { caseId } = (await req.json()) as { caseId?: string };
   if (!caseId) {
     return NextResponse.json({ ok: false, error: "caseId required" }, { status: 400 });
+  }
+
+  if (!rateLimit(`packet:${session.userId}`, 10, 60_000).ok) {
+    return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
+  }
+  const denial = await denyReason(session.userId, "packet");
+  if (denial) {
+    return NextResponse.json({ ok: false, error: DENIAL_MESSAGES[denial] }, { status: 402 });
   }
 
   const supa = supabaseServer();
