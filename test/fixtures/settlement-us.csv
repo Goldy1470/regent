@@ -1,0 +1,18 @@
+Order ID,Settlement ID,Settled Time,Type,Description,Amount,SKU,Quantity
+A-1001,S-777,2026-07-03 10:00:00 UTC,Item,Rose Glow Serum,$100.00,RG-02,1
+A-1001,S-777,2026-07-03 10:00:00 UTC,Referral fee,Referral commission 8%,-$8.00,RG-02,1
+A-1002,S-778,2026-07-05 09:12:00 UTC,Item,Sky Matte Brush Set,$60.00,SB-01,1
+A-1002,S-778,2026-07-05 09:12:00 UTC,Referral fee,Referral commission 6%,-$3.60,SB-01,1
+A-1003,S-779,2026-07-11 14:44:00 UTC,Item,Sundown Palette,$120.00,SP-03,1
+A-1003,S-779,2026-07-11 14:44:00 UTC,Referral fee,Referral commission 8%,-$9.60,SP-03,1
+A-1003,S-779,2026-07-11 14:44:00 UTC,Refund,Full refund after return,-$120.00,SP-03,1
+A-1003,S-779,2026-07-11 14:44:00 UTC,Refund admin fee,Return administration,-$10.00,SP-03,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Item,Velvet Matte Lipstick,$24.00,VL-10,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Referral fee,Referral commission 8%,-$1.92,VL-10,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Shipping fee,Shipping subsidy,-$4.00,VL-10,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Shipping subsidy,Shipping subsidy (dup),-$4.00,VL-10,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Return label fee,Return shipping charged to seller,-$7.50,VL-10,1
+A-1004,S-780,2026-07-18 19:02:00 UTC,Refund,Buyer remorse refund,-$24.00,VL-10,1
+A-1005,S-781,2026-07-25 08:31:00 UTC,Shipping fee,Shipping-only adjustment,-$2.00,,1
+A-1006,S-782,2026-08-05 12:00:00 UTC,Item,Rose Glow Serum restock,$100.00,RG-02,1
+A-1006,S-782,2026-08-05 12:00:00 UTC,Referral fee,Referral commission (old 8% rate),-$8.00,RG-02,1
